@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php artisan:*)",
+      "Bash(where php:*)",
+      "Bash(ls /c/php*)",
+      "Read(//mnt/**)"
+    ]
+  }
+}
