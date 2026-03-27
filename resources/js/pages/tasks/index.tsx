@@ -9,6 +9,7 @@ import {
     closestCorners,
     useSensor,
     useSensors,
+    useDroppable,
 } from '@dnd-kit/core';
 import {
     SortableContext,
@@ -18,7 +19,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Plus, Trash2, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -51,14 +52,21 @@ const PRIORITIES: { key: Priority; label: string; color: string; border: string;
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Tasks', href: '/tasks' }];
 
+function DroppableColumn({ id, children }: { id: string; children: React.ReactNode }) {
+    const { setNodeRef, isOver } = useDroppable({ id });
+    return (
+        <div ref={setNodeRef} className={cn('flex flex-col gap-2 flex-1 rounded-lg transition-colors', isOver && 'ring-2 ring-inset ring-current opacity-80')}>
+            {children}
+        </div>
+    );
+}
+
 function TaskCard({
     task,
-    users,
     onDelegate,
     onDelete,
 }: {
     task: Task;
-    users: User[];
     onDelegate: (task: Task) => void;
     onDelete: (task: Task) => void;
 }) {
@@ -126,12 +134,10 @@ function DelegateModal({
         priority: task.priority,
     });
 
-    function submit(e: React.FormEvent) {
+    function submit(e: React.SyntheticEvent) {
         e.preventDefault();
         patch(`/tasks/${task.id}`, { preserveScroll: true, onSuccess: onClose });
     }
-
-    const priority = PRIORITIES.find((p) => p.key === task.priority)!;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
@@ -204,7 +210,7 @@ function AddTaskForm({ users, onAdd }: { users: User[]; onAdd: () => void }) {
         assigned_to: '' as number | '',
     });
 
-    function submit(e: React.FormEvent) {
+    function submit(e: React.SyntheticEvent) {
         e.preventDefault();
         post('/tasks', { preserveScroll: true, onSuccess: () => { reset(); onAdd(); } });
     }
@@ -248,6 +254,11 @@ function AddTaskForm({ users, onAdd }: { users: User[]; onAdd: () => void }) {
 
 export default function TasksIndex({ tasks: initialTasks, users }: { tasks: Task[]; users: User[] }) {
     const [tasks, setTasks] = useState<Task[]>(initialTasks);
+
+    // Sync when Inertia reloads props (e.g. after add/delete)
+    useEffect(() => {
+        setTasks(initialTasks);
+    }, [initialTasks]);
     const [activeId, setActiveId] = useState<number | null>(null);
     const [delegating, setDelegating] = useState<Task | null>(null);
 
@@ -263,15 +274,20 @@ export default function TasksIndex({ tasks: initialTasks, users }: { tasks: Task
         const { active, over } = event;
         if (!over) return;
 
-        const activeTask = tasks.find((t) => t.id === active.id);
-        if (!activeTask) return;
+        const dragged = tasks.find((t) => t.id === active.id);
+        if (!dragged) return;
 
-        // Check if dragged over a column drop zone
-        const overPriority = PRIORITIES.find((p) => p.key === over.id);
-        if (overPriority && activeTask.priority !== overPriority.key) {
-            setTasks((prev) =>
-                prev.map((t) => t.id === active.id ? { ...t, priority: overPriority.key } : t)
-            );
+        // Dragged over a column droppable
+        const overColumn = PRIORITIES.find((p) => p.key === over.id);
+        if (overColumn && dragged.priority !== overColumn.key) {
+            setTasks((prev) => prev.map((t) => t.id === active.id ? { ...t, priority: overColumn.key } : t));
+            return;
+        }
+
+        // Dragged over another task — move to that task's column
+        const overTask = tasks.find((t) => t.id === over.id);
+        if (overTask && overTask.priority !== dragged.priority) {
+            setTasks((prev) => prev.map((t) => t.id === active.id ? { ...t, priority: overTask.priority } : t));
         }
     }
 
@@ -318,7 +334,7 @@ export default function TasksIndex({ tasks: initialTasks, users }: { tasks: Task
     }
 
     function saveOrder(updatedTasks: Task[]) {
-        const items = updatedTasks.map((t, i) => ({
+        const items = updatedTasks.map((t) => ({
             id: t.id,
             priority: t.priority,
             order: updatedTasks.filter((x) => x.priority === t.priority).indexOf(t),
@@ -366,13 +382,12 @@ export default function TasksIndex({ tasks: initialTasks, users }: { tasks: Task
                                         <span className="ml-auto text-xs text-muted-foreground">{columnTasks.length}</span>
                                     </div>
 
-                                    {/* Drop zone for empty columns */}
                                     <SortableContext
                                         id={priority.key}
                                         items={columnTasks.map((t) => t.id)}
                                         strategy={verticalListSortingStrategy}
                                     >
-                                        <div className="flex flex-col gap-2 flex-1" id={priority.key}>
+                                        <DroppableColumn id={priority.key}>
                                             {columnTasks.length === 0 && (
                                                 <div className="flex-1 rounded-lg border border-dashed py-8 text-center text-xs text-muted-foreground">
                                                     Drop tasks here
@@ -387,7 +402,7 @@ export default function TasksIndex({ tasks: initialTasks, users }: { tasks: Task
                                                     onDelete={handleDelete}
                                                 />
                                             ))}
-                                        </div>
+                                        </DroppableColumn>
                                     </SortableContext>
                                 </div>
                             );
