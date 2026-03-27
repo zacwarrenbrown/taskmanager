@@ -18,6 +18,8 @@ class Task extends Model
         'priority',
         'sort_order',
         'delegation_note',
+        'deadline',
+        'prerequisite_task_id',
     ];
 
     protected $casts = [
@@ -32,5 +34,10 @@ class Task extends Model
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    public function prerequisite(): BelongsTo
+    {
+        return $this->belongsTo(Task::class, 'prerequisite_task_id');
     }
 }

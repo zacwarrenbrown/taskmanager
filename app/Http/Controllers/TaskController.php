@@ -16,7 +16,7 @@ class TaskController extends Controller
     {
         $userId = $request->user()->id;
 
-        $tasks = Task::with(['user:id,name', 'assignee:id,name'])
+        $tasks = Task::with(['user:id,name', 'assignee:id,name', 'prerequisite:id,title,completed'])
             ->where(function ($q) use ($userId) {
                 $q->where('user_id', $userId)
                   ->orWhere('assigned_to', $userId);
@@ -55,12 +55,14 @@ class TaskController extends Controller
         Gate::authorize('update', $task);
 
         $validated = $request->validate([
-            'title'           => ['sometimes', 'required', 'string', 'max:255'],
-            'completed'       => ['sometimes', 'boolean'],
-            'priority'        => ['sometimes', 'in:first,high,low,last'],
-            'assigned_to'     => ['sometimes', 'nullable', 'exists:users,id'],
-            'delegation_note' => ['sometimes', 'nullable', 'string', 'max:1000'],
-            'sort_order'      => ['sometimes', 'integer'],
+            'title'                => ['sometimes', 'required', 'string', 'max:255'],
+            'completed'            => ['sometimes', 'boolean'],
+            'priority'             => ['sometimes', 'in:first,high,low,last'],
+            'assigned_to'          => ['sometimes', 'nullable', 'exists:users,id'],
+            'delegation_note'      => ['sometimes', 'nullable', 'string', 'max:1000'],
+            'sort_order'           => ['sometimes', 'integer'],
+            'deadline'             => ['sometimes', 'nullable', 'date'],
+            'prerequisite_task_id' => ['sometimes', 'nullable', 'exists:tasks,id'],
         ]);
 
         $task->update($validated);
