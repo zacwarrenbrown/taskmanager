@@ -9,7 +9,7 @@ class TaskPolicy
 {
     public function update(User $user, Task $task): bool
     {
-        return $task->user_id === $user->id;
+        return $task->user_id === $user->id || $task->assigned_to === $user->id;
     }
 
     public function delete(User $user, Task $task): bool

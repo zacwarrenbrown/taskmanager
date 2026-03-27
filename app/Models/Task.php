@@ -12,8 +12,12 @@ class Task extends Model
 
     protected $fillable = [
         'user_id',
+        'assigned_to',
         'title',
         'completed',
+        'priority',
+        'sort_order',
+        'delegation_note',
     ];
 
     protected $casts = [
@@ -23,5 +27,10 @@ class Task extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function assignee(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
     }
 }
