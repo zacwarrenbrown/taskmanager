@@ -172,7 +172,7 @@ function TaskCard({
                     {task.deadline && (
                         <span className={cn('flex items-center gap-0.5 text-xs', isOverdue ? 'text-red-500 font-medium' : 'text-muted-foreground')}>
                             <CalendarDays className="size-3" />
-                            {new Date(task.deadline).toLocaleDateString()}
+                            {new Date(task.deadline).toLocaleDateString('en-GB')}
                         </span>
                     )}
                     {task.prerequisite && (
